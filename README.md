@@ -1,1 +1,7 @@
-# Regressor99 - A continuous API Performance Regression Detection Platform.
+# Regressor99
+
+A continuous API performance regression detection platform.
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
