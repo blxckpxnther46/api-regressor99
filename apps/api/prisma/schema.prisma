@@ -1,0 +1,532 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  VIEWER
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
+  HEAD
+  OPTIONS
+}
+
+enum TriggerSource {
+  MANUAL
+  API
+  CI_CD
+  WEBHOOK
+  GITHUB_ACTIONS
+}
+
+enum ExecutionStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DecisionStatus {
+  PASSED
+  WARNED
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum BudgetMetric {
+  AVERAGE_LATENCY
+  P50_LATENCY
+  P95_LATENCY
+  P99_LATENCY
+  ERROR_RATE
+  THROUGHPUT
+}
+
+enum BudgetOperator {
+  LESS_THAN
+  LESS_THAN_OR_EQUAL
+  GREATER_THAN
+  GREATER_THAN_OR_EQUAL
+}
+
+enum BudgetResult {
+  PASS
+  WARN
+  FAIL
+}
+
+enum RegressionType {
+  LATENCY
+  ERROR_RATE
+  THROUGHPUT
+}
+
+enum RegressionSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RegressionStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  ACCEPTED
+}
+
+model User {
+  id                    String               @id @default(cuid())
+  email                 String               @unique
+  name                  String
+  passwordHash          String               @map("password_hash")
+  organizationMembers   OrganizationMember[]
+  refreshTokens         RefreshToken[]
+  createdSuiteVersions  BenchmarkSuiteVersion[] @relation("SuiteVersionCreator")
+  triggeredRuns         BenchmarkRun[]       @relation("RunTriggeredByUser")
+  promotedBaselines     Baseline[]           @relation("BaselinePromoter")
+  acknowledgedRegressions Regression[]       @relation("RegressionAcknowledger")
+  resolvedRegressions   Regression[]         @relation("RegressionResolver")
+  approvedExceptions    DecisionException[]
+  createdApiKeys        ApiKey[]
+  activityLogs          ActivityLog[]
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Organization {
+  id          String               @id @default(cuid())
+  name        String
+  slug        String               @unique
+  members     OrganizationMember[]
+  projects    Project[]
+  apiKeys     ApiKey[]
+  activityLogs ActivityLog[]
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String           @id @default(cuid())
+  organizationId String           @map("organization_id")
+  userId         String           @map("user_id")
+  role           OrganizationRole
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@unique([organizationId, userId])
+  @@index([userId, organizationId])
+  @@index([organizationId, role])
+  @@map("organization_members")
+}
+
+model RefreshToken {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  tokenHash         String    @unique @map("token_hash")
+  expiresAt         DateTime  @map("expires_at")
+  revokedAt         DateTime? @map("revoked_at")
+  replacedByTokenId String?   @map("replaced_by_token_id")
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Project {
+  id                 String              @id @default(cuid())
+  organizationId     String              @map("organization_id")
+  name               String
+  slug               String
+  description        String?
+  defaultBaseUrl     String?             @map("default_base_url")
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deployments        Deployment[]
+  benchmarkSuites    BenchmarkSuite[]
+  benchmarkRuns      BenchmarkRun[]
+  baselines          Baseline[]
+  performanceBudgets PerformanceBudget[]
+  regressions        Regression[]
+  decisionExceptions DecisionException[]
+  apiKeys            ApiKey[]
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, createdAt])
+  @@map("projects")
+}
+
+model Deployment {
+  id             String         @id @default(cuid())
+  organizationId String         @map("organization_id")
+  projectId      String         @map("project_id")
+  environment    String
+  commitSha      String?        @map("commit_sha")
+  branch         String?
+  version        String?
+  deployReference String?       @map("deploy_reference")
+  deployedAt     DateTime       @map("deployed_at")
+  metadata       Json?
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  runs           BenchmarkRun[]
+  regressions    Regression[]
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([projectId, deployedAt])
+  @@index([projectId, environment, deployedAt])
+  @@index([projectId, commitSha])
+  @@map("deployments")
+}
+
+model BenchmarkSuite {
+  id             String                  @id @default(cuid())
+  organizationId String                  @map("organization_id")
+  projectId      String                  @map("project_id")
+  name           String
+  description    String?
+  targetBaseUrl  String                  @map("target_base_url")
+  isActive       Boolean                 @default(true) @map("is_active")
+  project        Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions       BenchmarkSuiteVersion[]
+  runs           BenchmarkRun[]
+  baselines      Baseline[]
+  budgets        PerformanceBudget[]
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  @@index([projectId, createdAt])
+  @@index([projectId, isActive])
+  @@map("benchmark_suites")
+}
+
+model BenchmarkSuiteVersion {
+  id              String              @id @default(cuid())
+  organizationId  String              @map("organization_id")
+  suiteId         String              @map("suite_id")
+  versionNumber   Int                 @map("version_number")
+  loadProfile     Json                @map("load_profile")
+  configHash      String              @map("config_hash")
+  createdByUserId String?             @map("created_by_user_id")
+  suite           BenchmarkSuite      @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  createdBy       User?               @relation("SuiteVersionCreator", fields: [createdByUserId], references: [id])
+  endpoints       BenchmarkEndpoint[]
+  runs            BenchmarkRun[]
+  baselines       Baseline[]
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  @@unique([suiteId, versionNumber])
+  @@index([suiteId, versionNumber])
+  @@index([suiteId, createdAt])
+  @@map("benchmark_suite_versions")
+}
+
+model BenchmarkEndpoint {
+  id              String                 @id @default(cuid())
+  organizationId  String                 @map("organization_id")
+  suiteVersionId  String                 @map("suite_version_id")
+  name            String
+  method          HttpMethod
+  path            String
+  headers         Json?
+  queryParams     Json?                  @map("query_params")
+  body            Json?
+  expectedStatus  Int                    @map("expected_status")
+  assertions      Json?
+  timeoutMs       Int                    @default(5000) @map("timeout_ms")
+  suiteVersion    BenchmarkSuiteVersion  @relation(fields: [suiteVersionId], references: [id], onDelete: Cascade)
+  runMetrics      BenchmarkRunMetric[]
+  baselineMetrics BaselineMetric[]
+  performanceBudgets PerformanceBudget[]
+  regressions     Regression[]
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  @@index([suiteVersionId])
+  @@map("benchmark_endpoints")
+}
+
+model BenchmarkRun {
+  id                  String               @id @default(cuid())
+  organizationId      String               @map("organization_id")
+  projectId           String               @map("project_id")
+  suiteId             String               @map("suite_id")
+  suiteVersionId      String               @map("suite_version_id")
+  deploymentId        String?              @map("deployment_id")
+  triggeredByUserId   String?              @map("triggered_by_user_id")
+  triggeredByApiKeyId String?              @map("triggered_by_api_key_id")
+  triggerSource       TriggerSource        @map("trigger_source")
+  environment         String
+  targetBaseUrl       String               @map("target_base_url")
+  executionStatus     ExecutionStatus      @default(QUEUED) @map("execution_status")
+  decisionStatus      DecisionStatus?      @map("decision_status")
+  startedAt           DateTime?            @map("started_at")
+  finishedAt          DateTime?            @map("finished_at")
+  failureReason       String?              @map("failure_reason")
+  metadata            Json?
+  project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suite               BenchmarkSuite       @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  suiteVersion        BenchmarkSuiteVersion @relation(fields: [suiteVersionId], references: [id], onDelete: Restrict)
+  deployment          Deployment?          @relation(fields: [deploymentId], references: [id])
+  triggeredByUser     User?                @relation("RunTriggeredByUser", fields: [triggeredByUserId], references: [id])
+  triggeredByApiKey   ApiKey?              @relation(fields: [triggeredByApiKeyId], references: [id])
+  metrics             BenchmarkRunMetric[]
+  baselines           Baseline[]
+  budgetEvaluations   BudgetEvaluation[]
+  regressions         Regression[]
+  decisionExceptions  DecisionException[]
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  @@index([projectId, createdAt])
+  @@index([projectId, environment, createdAt])
+  @@index([suiteId, createdAt])
+  @@index([projectId, executionStatus, createdAt])
+  @@index([projectId, decisionStatus, createdAt])
+  @@index([deploymentId])
+  @@map("benchmark_runs")
+}
+
+model BenchmarkRunMetric {
+  id               String             @id @default(cuid())
+  organizationId   String             @map("organization_id")
+  runId            String             @map("run_id")
+  endpointId       String?            @map("endpoint_id")
+  requestCount     Int                @map("request_count")
+  successCount     Int                @map("success_count")
+  errorCount       Int                @map("error_count")
+  averageLatencyMs Float              @map("average_latency_ms")
+  p50LatencyMs     Float              @map("p50_latency_ms")
+  p95LatencyMs     Float              @map("p95_latency_ms")
+  p99LatencyMs     Float              @map("p99_latency_ms")
+  minLatencyMs     Float              @map("min_latency_ms")
+  maxLatencyMs     Float              @map("max_latency_ms")
+  throughputRps    Float              @map("throughput_rps")
+  errorRate        Float              @map("error_rate")
+  run              BenchmarkRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  endpoint         BenchmarkEndpoint? @relation(fields: [endpointId], references: [id])
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  @@index([runId])
+  @@index([runId, endpointId])
+  @@index([endpointId, createdAt])
+  @@map("benchmark_run_metrics")
+}
+
+model Baseline {
+  id               String                 @id @default(cuid())
+  organizationId   String                 @map("organization_id")
+  projectId        String                 @map("project_id")
+  suiteId          String                 @map("suite_id")
+  suiteVersionId   String                 @map("suite_version_id")
+  sourceRunId      String                 @map("source_run_id")
+  environment      String
+  versionNumber    Int                    @map("version_number")
+  isActive         Boolean                @default(true) @map("is_active")
+  reason           String
+  promotedByUserId String?                @map("promoted_by_user_id")
+  activeFrom       DateTime               @map("active_from")
+  activeTo         DateTime?              @map("active_to")
+  project          Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suite            BenchmarkSuite         @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  suiteVersion     BenchmarkSuiteVersion  @relation(fields: [suiteVersionId], references: [id], onDelete: Restrict)
+  sourceRun        BenchmarkRun           @relation(fields: [sourceRunId], references: [id], onDelete: Restrict)
+  promotedBy       User?                  @relation("BaselinePromoter", fields: [promotedByUserId], references: [id])
+  metrics          BaselineMetric[]
+  regressions      Regression[]
+  createdAt        DateTime               @default(now()) @map("created_at")
+
+  @@index([suiteId, environment, isActive])
+  @@index([projectId, environment, createdAt])
+  @@index([sourceRunId])
+  @@map("baselines")
+}
+
+model BaselineMetric {
+  id               String             @id @default(cuid())
+  organizationId   String             @map("organization_id")
+  baselineId       String             @map("baseline_id")
+  endpointId       String?            @map("endpoint_id")
+  requestCount     Int                @map("request_count")
+  averageLatencyMs Float              @map("average_latency_ms")
+  p50LatencyMs     Float              @map("p50_latency_ms")
+  p95LatencyMs     Float              @map("p95_latency_ms")
+  p99LatencyMs     Float              @map("p99_latency_ms")
+  throughputRps    Float              @map("throughput_rps")
+  errorRate        Float              @map("error_rate")
+  baseline         Baseline           @relation(fields: [baselineId], references: [id], onDelete: Cascade)
+  endpoint         BenchmarkEndpoint? @relation(fields: [endpointId], references: [id])
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  @@index([baselineId])
+  @@index([baselineId, endpointId])
+  @@map("baseline_metrics")
+}
+
+model PerformanceBudget {
+  id             String            @id @default(cuid())
+  organizationId String            @map("organization_id")
+  projectId      String            @map("project_id")
+  suiteId        String?           @map("suite_id")
+  endpointId     String?           @map("endpoint_id")
+  name           String
+  metric         BudgetMetric
+  operator       BudgetOperator
+  warnThreshold  Float?            @map("warn_threshold")
+  failThreshold  Float             @map("fail_threshold")
+  unit           String
+  isHard         Boolean           @default(true) @map("is_hard")
+  isEnabled      Boolean           @default(true) @map("is_enabled")
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suite          BenchmarkSuite?   @relation(fields: [suiteId], references: [id])
+  endpoint       BenchmarkEndpoint? @relation(fields: [endpointId], references: [id])
+  evaluations    BudgetEvaluation[]
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  @@index([projectId, isEnabled])
+  @@index([suiteId, isEnabled])
+  @@index([endpointId, isEnabled])
+  @@map("performance_budgets")
+}
+
+model BudgetEvaluation {
+  id            String            @id @default(cuid())
+  organizationId String           @map("organization_id")
+  runId         String            @map("run_id")
+  budgetId      String            @map("budget_id")
+  metric        BudgetMetric
+  actualValue   Float             @map("actual_value")
+  warnThreshold Float?            @map("warn_threshold")
+  failThreshold Float             @map("fail_threshold")
+  result        BudgetResult
+  run           BenchmarkRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  budget        PerformanceBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  @@index([runId])
+  @@index([budgetId, createdAt])
+  @@index([runId, result])
+  @@map("budget_evaluations")
+}
+
+model Regression {
+  id                    String             @id @default(cuid())
+  organizationId        String             @map("organization_id")
+  projectId             String             @map("project_id")
+  runId                 String             @map("run_id")
+  baselineId            String             @map("baseline_id")
+  endpointId            String?            @map("endpoint_id")
+  deploymentId          String?            @map("deployment_id")
+  type                  RegressionType
+  metric                BudgetMetric
+  baselineValue         Float              @map("baseline_value")
+  currentValue          Float              @map("current_value")
+  changePercent         Float              @map("change_percent")
+  severity              RegressionSeverity
+  status                RegressionStatus   @default(OPEN)
+  detectedAt            DateTime           @default(now()) @map("detected_at")
+  acknowledgedByUserId  String?            @map("acknowledged_by_user_id")
+  acknowledgedAt        DateTime?          @map("acknowledged_at")
+  resolvedByUserId      String?            @map("resolved_by_user_id")
+  resolvedAt            DateTime?          @map("resolved_at")
+  resolutionReason      String?            @map("resolution_reason")
+  project               Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run                   BenchmarkRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  baseline              Baseline           @relation(fields: [baselineId], references: [id], onDelete: Restrict)
+  endpoint              BenchmarkEndpoint? @relation(fields: [endpointId], references: [id])
+  deployment            Deployment?        @relation(fields: [deploymentId], references: [id])
+  acknowledgedBy        User?              @relation("RegressionAcknowledger", fields: [acknowledgedByUserId], references: [id])
+  resolvedBy            User?              @relation("RegressionResolver", fields: [resolvedByUserId], references: [id])
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  @@index([projectId, createdAt])
+  @@index([projectId, status, createdAt])
+  @@index([runId])
+  @@index([deploymentId])
+  @@index([severity, createdAt])
+  @@map("regressions")
+}
+
+model DecisionException {
+  id               String       @id @default(cuid())
+  organizationId   String       @map("organization_id")
+  projectId        String       @map("project_id")
+  runId            String       @map("run_id")
+  approvedByUserId String       @map("approved_by_user_id")
+  reason           String
+  expiresAt        DateTime     @map("expires_at")
+  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run              BenchmarkRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  approvedBy       User         @relation(fields: [approvedByUserId], references: [id])
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  @@index([projectId, expiresAt])
+  @@index([runId])
+  @@map("decision_exceptions")
+}
+
+model ApiKey {
+  id              String          @id @default(cuid())
+  organizationId  String          @map("organization_id")
+  projectId       String?         @map("project_id")
+  name            String
+  keyPrefix       String          @map("key_prefix")
+  keyHash         String          @unique @map("key_hash")
+  scopes          Json
+  lastUsedAt      DateTime?       @map("last_used_at")
+  revokedAt       DateTime?       @map("revoked_at")
+  createdByUserId String          @map("created_by_user_id")
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project         Project?        @relation(fields: [projectId], references: [id])
+  createdBy       User            @relation(fields: [createdByUserId], references: [id])
+  triggeredRuns   BenchmarkRun[]
+  activityLogs    ActivityLog[]
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  @@index([organizationId, projectId])
+  @@index([keyPrefix])
+  @@map("api_keys")
+}
+
+model ActivityLog {
+  id             String        @id @default(cuid())
+  organizationId String        @map("organization_id")
+  actorUserId    String?       @map("actor_user_id")
+  actorApiKeyId  String?       @map("actor_api_key_id")
+  action         String
+  entityType     String        @map("entity_type")
+  entityId       String        @map("entity_id")
+  metadata       Json?
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUser      User?         @relation(fields: [actorUserId], references: [id])
+  actorApiKey    ApiKey?       @relation(fields: [actorApiKeyId], references: [id])
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("activity_logs")
+}
+
