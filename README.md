@@ -14,10 +14,10 @@ Regressor99 is structured as an npm workspaces monorepo:
 
 ```bash
 npm install
-docker compose up -d
-npm run prisma:generate -w @regressor99/api
 npm run dev
 ```
+
+`npm run dev` starts the API, web app, and mock target API together.
 
 API health check:
 
@@ -30,6 +30,16 @@ Web app:
 ```text
 http://localhost:5173
 ```
+
+Mock target API:
+
+```text
+http://localhost:4100/health
+```
+
+Demo walkthrough:
+
+- [Demo Walkthrough](docs/DEMO_WALKTHROUGH.md)
 
 ## Documentation
 

@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "concurrently -n api,web,mock -c blue,green,magenta \"npm run dev -w @regressor99/api\" \"npm run dev -w @regressor99/web\" \"npm run dev -w @regressor99/mock-target\"",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
@@ -20,8 +20,8 @@
     "npm": ">=10.0.0"
   },
   "devDependencies": {
+    "concurrently": "^10.0.1",
     "prettier": "^3.3.3",
     "typescript": "^5.6.3"
   }
 }
-
