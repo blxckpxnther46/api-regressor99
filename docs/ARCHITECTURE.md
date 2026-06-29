@@ -7,6 +7,7 @@ The first principle is separation of responsibility:
 - The frontend helps users understand projects, deployments, benchmark history, regressions, and performance budgets.
 - The API owns authentication, authorization, organization boundaries, business rules, and orchestration.
 - The database is the source of truth for tenants, projects, benchmark configuration, run results, baselines, regressions, budgets, and audit history.
+- Redis stores cacheable, recomputable read models and short-lived operational data.
 - Background workers execute long-running benchmark and analysis jobs outside request/response paths.
 - CI/CD integrations submit deployments and trigger benchmark runs through stable API contracts.
 
@@ -32,10 +33,12 @@ flowchart LR
   CI["CI/CD Pipeline"] --> API["Express API"]
   Frontend --> API
   API --> DB[("PostgreSQL")]
+  API --> Redis[("Redis Cache")]
   API --> Worker["Background Worker"]
   Worker --> Runner["Benchmark Runner"]
   Runner --> Target["Customer API"]
   Worker --> DB
+  Worker --> Redis
   API --> Realtime["Socket.IO Gateway"]
   Realtime --> Frontend
 ```
@@ -147,9 +150,11 @@ HTTP request
   -> validation schema
   -> controller
   -> service
+  -> Redis cache lookup if endpoint is cacheable
   -> repository
   -> Prisma
   -> PostgreSQL
+  -> cache fill or invalidation when needed
 ```
 
 Rules:
@@ -159,6 +164,7 @@ Rules:
 - Keep tenant-scoped queries explicit.
 - Return stable error shapes.
 - Use transactions for multi-write business operations.
+- Cache keys must be tenant-scoped and invalidated by the owning write path.
 - Write activity logs for significant changes.
 
 ## Database Architecture
@@ -211,6 +217,33 @@ Initial indexing strategy:
 - `performance_budgets(project_id, enabled)`
 
 Indexing rule: every list page and every authorization lookup should have an intentional index.
+
+## Redis Cache Architecture
+
+Redis is a supporting infrastructure service, not a second source of truth.
+
+Phase 2 intent:
+
+- Use Redis for cacheable read paths with repeated access patterns.
+- Keep PostgreSQL as the canonical persistence layer.
+- Do not require Redis for correctness-critical writes.
+- Fall back cleanly to PostgreSQL when Redis is unavailable or cold.
+
+Initial cache candidates:
+
+- Project dashboard summaries.
+- Recent benchmark runs by project and environment.
+- Regression list summaries.
+- Performance budget summaries.
+- Other derived read models that are expensive enough to recompute repeatedly.
+
+Cache rules:
+
+- Keys must include organization and project scope where applicable.
+- Cached values must be safe to recompute from PostgreSQL.
+- Services that mutate source data must own cache invalidation.
+- TTLs should be explicit, short enough to tolerate staleness, and documented per cache.
+- Authentication and authorization decisions should not depend exclusively on Redis state.
 
 ## Tenancy And Authorization
 
@@ -298,7 +331,70 @@ MVP flow:
 9. Worker marks the run as `COMPLETED`, `FAILED`, or `CANCELLED`.
 10. API emits realtime updates to the frontend.
 
-For the MVP, a simple database-backed job table is acceptable. Later we can introduce BullMQ with Redis if concurrency, retries, and scheduling become more complex.
+For the MVP, a simple database-backed job table is acceptable. Redis is introduced earlier for caching, but BullMQ should remain a later step when concurrency, retries, delayed scheduling, or distributed coordination become more complex.
+
+## Runner Adapter Architecture
+
+Regressor99 should be runner-agnostic.
+
+The benchmark runner is an execution detail. The product value comes from how Regressor99 stores results, compares them to baselines, evaluates budgets, detects regressions, correlates deployments, and explains outcomes.
+
+Target architecture:
+
+```text
+Benchmark Suite
+  -> Runner Orchestrator
+  -> Runner Adapter
+      -> internal-http
+      -> k6
+      -> autocannon later
+      -> artillery later
+      -> bring-your-own-results later
+  -> Normalized Metrics
+  -> Baseline Comparison
+  -> Budget Evaluation
+  -> Regression Detection
+  -> Decision Engine
+  -> AI Analysis
+```
+
+The first runner should be an internal HTTP runner because it keeps the product understandable and lets us own the basic metric pipeline.
+
+The k6 adapter should come after the internal metric model is stable. k6 is not a competitor to defeat and not the center of the product. It is an optional advanced execution backend for teams that need stronger load-generation features or already use k6 in CI.
+
+All runner adapters must produce the same normalized metric shape:
+
+```json
+{
+  "averageLatencyMs": 180,
+  "p50LatencyMs": 140,
+  "p95LatencyMs": 260,
+  "p99LatencyMs": 380,
+  "errorRate": 0.7,
+  "throughputRps": 520,
+  "requestCount": 30000,
+  "successCount": 29790,
+  "errorCount": 210
+}
+```
+
+Runner adapter rules:
+
+- The runner adapter executes or ingests benchmark results.
+- The runner adapter does not decide pass or fail.
+- The budget engine decides whether metric limits are violated.
+- The regression engine decides whether performance changed meaningfully.
+- The decision engine decides `PASSED`, `WARNED`, `FAILED`, or `NEEDS_REVIEW`.
+- AI analysis explains facts after deterministic engines finish.
+
+k6 integration options:
+
+- Generate a k6 script from a Regressor99 benchmark suite.
+- Run k6 from a worker process and parse its summary output.
+- Allow teams to upload or POST k6 summary JSON from their own CI.
+- Map k6 metrics into Regressor99 normalized metrics.
+
+This keeps Regressor99 useful even when users already have k6.
 
 ## Regression Detection Strategy
 
@@ -464,7 +560,15 @@ Phase 1: Foundation
 - Environment validation.
 - Health check endpoint.
 
-Phase 2: Identity And Tenancy
+Phase 2: Data Foundation And Caching
+
+- Neon PostgreSQL environment strategy.
+- Prisma migrations and seed workflow.
+- Redis connection strategy.
+- Cache helper and invalidation conventions.
+- Cacheable dashboard and list read paths.
+
+Phase 3: Identity And Tenancy
 
 - Registration.
 - Login.
@@ -474,21 +578,21 @@ Phase 2: Identity And Tenancy
 - Memberships.
 - RBAC policies.
 
-Phase 3: Projects And Deployments
+Phase 4: Projects And Deployments
 
 - Project CRUD.
 - Deployment records.
 - CI/CD API keys.
 - Deployment webhook endpoint.
 
-Phase 4: Benchmark Configuration
+Phase 5: Benchmark Configuration
 
 - Benchmark suites.
 - Suite versioning.
 - Endpoints, headers, payloads, and load profiles.
 - Manual run creation.
 
-Phase 5: Run Execution And Metrics
+Phase 6: Run Execution And Metrics
 
 - Background worker.
 - Run lifecycle.
@@ -496,7 +600,7 @@ Phase 5: Run Execution And Metrics
 - Run detail API.
 - Basic realtime updates.
 
-Phase 6: Baselines, Budgets, And Regressions
+Phase 7: Baselines, Budgets, And Regressions
 
 - Active baselines.
 - Historical baseline records.
@@ -505,7 +609,7 @@ Phase 6: Baselines, Budgets, And Regressions
 - Regression detection.
 - Regression acknowledgment flow.
 
-Phase 7: Dashboard And Trends
+Phase 8: Dashboard And Trends
 
 - Project dashboard.
 - Run history.
@@ -513,7 +617,7 @@ Phase 7: Dashboard And Trends
 - Budget status.
 - Latency and throughput charts.
 
-Phase 8: Production Readiness
+Phase 9: Production Readiness
 
 - Logging.
 - Error monitoring.
@@ -539,11 +643,34 @@ CI/CD systems and webhooks are easier to integrate with REST. The frontend can s
 
 ### Background worker before external queue
 
-A database-backed job model is easier to reason about in the MVP. Redis and BullMQ become worthwhile when we need higher throughput, delayed jobs, backoff policies, or distributed worker coordination.
+A database-backed job model is easier to reason about in the MVP. Redis is now part of the architecture for cacheable data, but BullMQ should still wait until we need higher job throughput, delayed jobs, backoff policies, or distributed worker coordination.
+
+### Redis for cacheable data
+
+Repeated dashboard and list queries will benefit from a fast cache layer before we need a more complex queueing topology. Redis gives us that read optimization while keeping PostgreSQL as the source of truth and without forcing a premature move to BullMQ.
 
 ### Deterministic regression rules before AI
 
 Regression detection must be explainable. AI can later summarize or suggest causes, but it should not be the first source of truth.
+
+### Stand beside k6, not against it
+
+Regressor99 should not try to be a better k6. k6 is already strong at load generation, scenarios, checks, thresholds, and CI execution.
+
+Regressor99 should own the product layer around benchmark results:
+
+- Target ownership verification.
+- SaaS tenancy.
+- Scoped API keys.
+- Historical baselines.
+- Baseline promotion.
+- Performance budgets.
+- Regression records.
+- Deployment decisions.
+- Audit trail.
+- AI-assisted analysis.
+
+This makes k6 an optional runner backend rather than a replacement for the Regressor99 product.
 
 ## Definition Of Done
 
@@ -558,4 +685,3 @@ A feature is not done until:
 - Activity logging is considered.
 - Docs are updated when contracts or architecture change.
 - The feature can be run locally.
-

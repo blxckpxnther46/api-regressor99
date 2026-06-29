@@ -19,6 +19,13 @@ npm run prisma:generate -w @regressor99/api
 npm run dev
 ```
 
+Backend checks:
+
+```bash
+npm run typecheck -w @regressor99/api
+npm run test -w @regressor99/api
+```
+
 API health check:
 
 ```text

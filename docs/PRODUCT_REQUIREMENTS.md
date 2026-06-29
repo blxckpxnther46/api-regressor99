@@ -14,6 +14,55 @@ Did this deployment make our API slower, less reliable, or less capable of handl
 
 Regressor99 is not trying to replace every load testing tool. It is a deployment-aware performance regression system built around benchmark suites, historical baselines, performance budgets, and release decisions.
 
+## Product Positioning Against Load Testing Tools
+
+Regressor99 should not compete with k6, Artillery, JMeter, or other load-generation tools as a raw traffic engine.
+
+Regressor99 should stand beside them.
+
+The product position is:
+
+```text
+k6 and similar tools execute performance tests.
+Regressor99 turns benchmark results into deployment intelligence.
+```
+
+Regressor99 owns:
+
+- Organization, project, and team workflow.
+- Target API ownership verification.
+- API key security and scoped CI/CD access.
+- Benchmark suite lifecycle.
+- Historical baselines.
+- Baseline promotion.
+- Performance budgets.
+- Regression records.
+- Deployment correlation.
+- Pass, warn, fail, and needs-review decisions.
+- Audit history.
+- AI-assisted explanations and summaries.
+
+k6 can become one optional runner backend, but it should not become the product identity.
+
+This means Regressor99 should support:
+
+- Internal HTTP runner for first-party benchmark execution.
+- k6 adapter for advanced load-generation workflows.
+- Bring-your-own k6 results for teams already using k6.
+- Future runner adapters such as Autocannon or Artillery if useful.
+
+The core product value remains independent of the runner:
+
+```text
+Runner output
+  -> normalized metrics
+  -> baseline comparison
+  -> budget evaluation
+  -> regression detection
+  -> deployment decision
+  -> AI analysis
+```
+
 ## Core Workflow
 
 The first version should revolve around this workflow:
@@ -39,6 +88,8 @@ Deployment gets pass/warn/fail
 ```
 
 This workflow is the spine of the product. Features that do not support this flow should usually wait.
+
+Cacheable dashboard and list reads can support this workflow as long as Redis stays a performance layer and PostgreSQL remains the source of truth.
 
 ## Target Users
 
@@ -96,6 +147,7 @@ The MVP should prove that Regressor99 can:
 - Define benchmark suites for API endpoints.
 - Trigger benchmark runs manually or through an API key.
 - Execute benchmark runs through a background worker.
+- Normalize benchmark output from the runner into Regressor99 metrics.
 - Store latency, error, throughput, and request metrics.
 - Compare completed runs against active baselines.
 - Evaluate performance budgets.
@@ -103,6 +155,7 @@ The MVP should prove that Regressor99 can:
 - Create regression records when meaningful performance degradation is detected.
 - Promote a completed run to a new active baseline.
 - Show basic dashboard and run details in the frontend.
+- Serve cacheable dashboard and list data through Redis-backed reads without changing source-of-truth semantics.
 
 ## MVP Non-Goals
 
@@ -122,6 +175,8 @@ The MVP should not include:
 - Public marketplace or plugin system.
 
 These are valuable later, but they should not block the core regression workflow.
+
+Redis for cacheable data is part of the plan. What remains out of scope for the MVP is Redis-backed distributed job orchestration such as BullMQ.
 
 ## User Stories
 
@@ -335,9 +390,22 @@ Building a perfect load testing engine can distract from the product.
 
 Mitigation:
 
-- Start with a simple internal HTTP runner.
-- Keep runner backends replaceable.
-- Consider k6 integration later.
+- Start with a focused internal HTTP runner.
+- Define a runner adapter interface early.
+- Keep runner output normalized into Regressor99 metrics.
+- Add k6 as an optional advanced runner backend.
+- Support bring-your-own k6 result ingestion later.
+
+### Stale Cache Behavior
+
+Redis-backed reads can drift briefly from the latest committed PostgreSQL state if invalidation is wrong or delayed.
+
+Mitigation:
+
+- Cache only recomputable data.
+- Use explicit tenant-scoped and project-scoped cache keys.
+- Invalidate cache entries from the owning write path.
+- Fall back to PostgreSQL on cache miss or cache failure.
 
 ### Competing With Broad Platforms
 
@@ -358,6 +426,10 @@ Potential later features:
 - Postman import.
 - `regressor99.yml` repo config.
 - k6 runner backend.
+- Bring-your-own k6 results ingestion.
+- Autocannon runner backend.
+- Artillery runner backend.
+- BullMQ-backed distributed worker orchestration.
 - Rolling baselines.
 - Statistical confidence scoring.
 - Root cause suggestions.
@@ -365,4 +437,3 @@ Potential later features:
 - Multi-region runners.
 - Billing and plans.
 - Enterprise SSO.
-
