@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { createApp } from "./app.js";
+import { disconnectRedis } from "./cache/redis.js";
 import { env } from "./config/env.js";
 import { prisma } from "./db/prisma.js";
 
@@ -14,6 +15,7 @@ function shutdown(signal: NodeJS.Signals) {
   console.log(`${signal} received. Shutting down API.`);
 
   server.close(async () => {
+    await disconnectRedis();
     await prisma.$disconnect();
     process.exit(0);
   });
@@ -21,4 +23,3 @@ function shutdown(signal: NodeJS.Signals) {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-

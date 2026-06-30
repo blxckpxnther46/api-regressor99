@@ -15,7 +15,8 @@ Regressor99 is structured as an npm workspaces monorepo:
 ```bash
 npm install
 docker compose up -d
-npm run prisma:generate -w @regressor99/api
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
@@ -38,9 +39,29 @@ Web app:
 http://localhost:5173
 ```
 
+## Data Commands
+
+```bash
+npm run db:migrate
+npm run db:seed
+npm run db:reset
+npm run db:studio
+```
+
+Local stack:
+
+- PostgreSQL on `localhost:5432`
+- Redis on `localhost:6379`
+
+Neon env strategy:
+
+- `DATABASE_URL`: pooled app connection string.
+- `DIRECT_URL`: direct migration connection string.
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Data Foundation](docs/DATA_FOUNDATION.md)
 - [Product Requirements](docs/PRODUCT_REQUIREMENTS.md)
 - [Database Design](docs/DATABASE_DESIGN.md)
 - [API Contract](docs/API_CONTRACT.md)

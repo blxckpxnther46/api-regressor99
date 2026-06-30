@@ -42,7 +42,7 @@ export function createApp() {
   );
   app.use(express.json({ limit: "1mb" }));
 
-  app.use("/api/v1", apiRouter);
+  app.use(apiRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
