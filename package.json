@@ -13,6 +13,10 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run prisma:migrate -w @regressor99/api",
+    "db:seed": "npm run prisma:seed -w @regressor99/api",
+    "db:reset": "npm run db:reset -w @regressor99/api",
+    "db:studio": "npm run prisma:studio -w @regressor99/api",
     "format": "prettier --write ."
   },
   "engines": {

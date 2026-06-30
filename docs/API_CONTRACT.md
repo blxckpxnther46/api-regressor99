@@ -35,10 +35,10 @@ Used by the web app.
 Expected flow:
 
 ```text
-POST /auth/register
-POST /auth/login
-POST /auth/refresh
-POST /auth/logout
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
 ```
 
 Access tokens are short-lived. Refresh tokens are rotated and stored server-side as hashes.
@@ -105,7 +105,7 @@ Use cursor pagination for lists.
 Request:
 
 ```text
-GET /projects/:projectId/benchmark-runs?limit=20&cursor=run_123
+GET /api/v1/projects/:projectId/benchmark-runs?limit=20&cursor=run_123
 ```
 
 Response:
@@ -147,7 +147,7 @@ INTERNAL_ERROR
 ### Register
 
 ```text
-POST /auth/register
+POST /api/v1/auth/register
 ```
 
 Request:
@@ -185,7 +185,7 @@ Response:
 ### Login
 
 ```text
-POST /auth/login
+POST /api/v1/auth/login
 ```
 
 Request:
@@ -200,7 +200,7 @@ Request:
 ### Refresh
 
 ```text
-POST /auth/refresh
+POST /api/v1/auth/refresh
 ```
 
 Refresh token transport can be finalized during implementation. Prefer secure HTTP-only cookies for web sessions.
@@ -208,7 +208,7 @@ Refresh token transport can be finalized during implementation. Prefer secure HT
 ### Logout
 
 ```text
-POST /auth/logout
+POST /api/v1/auth/logout
 ```
 
 Revokes the active refresh token.
@@ -218,25 +218,25 @@ Revokes the active refresh token.
 ### List My Organizations
 
 ```text
-GET /organizations
+GET /api/v1/organizations
 ```
 
 ### Get Organization
 
 ```text
-GET /organizations/:organizationId
+GET /api/v1/organizations/:organizationId
 ```
 
 ### List Members
 
 ```text
-GET /organizations/:organizationId/members
+GET /api/v1/organizations/:organizationId/members
 ```
 
 ### Invite Or Add Member
 
 ```text
-POST /organizations/:organizationId/members
+POST /api/v1/organizations/:organizationId/members
 ```
 
 Request:
@@ -256,7 +256,7 @@ MVP note:
 ### Update Member Role
 
 ```text
-PATCH /organizations/:organizationId/members/:memberId
+PATCH /api/v1/organizations/:organizationId/members/:memberId
 ```
 
 Request:
@@ -272,7 +272,7 @@ Request:
 ### Create Project
 
 ```text
-POST /projects
+POST /api/v1/projects
 ```
 
 Request:
@@ -290,25 +290,25 @@ Request:
 ### List Projects
 
 ```text
-GET /projects?organizationId=org_123
+GET /api/v1/projects?organizationId=org_123
 ```
 
 ### Get Project
 
 ```text
-GET /projects/:projectId
+GET /api/v1/projects/:projectId
 ```
 
 ### Update Project
 
 ```text
-PATCH /projects/:projectId
+PATCH /api/v1/projects/:projectId
 ```
 
 ### Delete Or Archive Project
 
 ```text
-DELETE /projects/:projectId
+DELETE /api/v1/projects/:projectId
 ```
 
 MVP recommendation:
@@ -320,7 +320,7 @@ MVP recommendation:
 ### Create Deployment
 
 ```text
-POST /projects/:projectId/deployments
+POST /api/v1/projects/:projectId/deployments
 ```
 
 Request:
@@ -342,13 +342,13 @@ Request:
 ### List Deployments
 
 ```text
-GET /projects/:projectId/deployments
+GET /api/v1/projects/:projectId/deployments
 ```
 
 ### Get Deployment
 
 ```text
-GET /deployments/:deploymentId
+GET /api/v1/deployments/:deploymentId
 ```
 
 ## Benchmark Suite Routes
@@ -356,7 +356,7 @@ GET /deployments/:deploymentId
 ### Create Suite
 
 ```text
-POST /projects/:projectId/benchmark-suites
+POST /api/v1/projects/:projectId/benchmark-suites
 ```
 
 Request:
@@ -408,19 +408,19 @@ Response:
 ### List Suites
 
 ```text
-GET /projects/:projectId/benchmark-suites
+GET /api/v1/projects/:projectId/benchmark-suites
 ```
 
 ### Get Suite
 
 ```text
-GET /benchmark-suites/:suiteId
+GET /api/v1/benchmark-suites/:suiteId
 ```
 
 ### Update Suite
 
 ```text
-PATCH /benchmark-suites/:suiteId
+PATCH /api/v1/benchmark-suites/:suiteId
 ```
 
 Important:
@@ -430,7 +430,7 @@ Important:
 ### Archive Suite
 
 ```text
-DELETE /benchmark-suites/:suiteId
+DELETE /api/v1/benchmark-suites/:suiteId
 ```
 
 ## Benchmark Run Routes
@@ -438,7 +438,7 @@ DELETE /benchmark-suites/:suiteId
 ### Trigger Run
 
 ```text
-POST /benchmark-runs
+POST /api/v1/benchmark-runs
 ```
 
 Used by UI, API clients, and CI/CD.
@@ -477,7 +477,7 @@ Response:
 ### CI/CD Trigger Shortcut
 
 ```text
-POST /ci/benchmark-runs
+POST /api/v1/ci/benchmark-runs
 ```
 
 This route can create or find a deployment and trigger a run in one request.
@@ -515,13 +515,13 @@ Response:
 ### Get Run
 
 ```text
-GET /benchmark-runs/:runId
+GET /api/v1/benchmark-runs/:runId
 ```
 
 ### List Project Runs
 
 ```text
-GET /projects/:projectId/benchmark-runs
+GET /api/v1/projects/:projectId/benchmark-runs
 ```
 
 Filters:
@@ -538,13 +538,13 @@ limit
 ### Get Run Metrics
 
 ```text
-GET /benchmark-runs/:runId/metrics
+GET /api/v1/benchmark-runs/:runId/metrics
 ```
 
 ### Cancel Run
 
 ```text
-POST /benchmark-runs/:runId/cancel
+POST /api/v1/benchmark-runs/:runId/cancel
 ```
 
 ## Baseline Routes
@@ -552,19 +552,19 @@ POST /benchmark-runs/:runId/cancel
 ### List Baselines
 
 ```text
-GET /benchmark-suites/:suiteId/baselines?environment=staging
+GET /api/v1/benchmark-suites/:suiteId/baselines?environment=staging
 ```
 
 ### Get Active Baseline
 
 ```text
-GET /benchmark-suites/:suiteId/baselines/active?environment=staging
+GET /api/v1/benchmark-suites/:suiteId/baselines/active?environment=staging
 ```
 
 ### Promote Run To Baseline
 
 ```text
-POST /benchmark-runs/:runId/promote-baseline
+POST /api/v1/benchmark-runs/:runId/promote-baseline
 ```
 
 Request:
@@ -601,7 +601,7 @@ Rules:
 ### Create Budget
 
 ```text
-POST /projects/:projectId/performance-budgets
+POST /api/v1/projects/:projectId/performance-budgets
 ```
 
 Request:
@@ -623,19 +623,19 @@ Request:
 ### List Budgets
 
 ```text
-GET /projects/:projectId/performance-budgets
+GET /api/v1/projects/:projectId/performance-budgets
 ```
 
 ### Update Budget
 
 ```text
-PATCH /performance-budgets/:budgetId
+PATCH /api/v1/performance-budgets/:budgetId
 ```
 
 ### Disable Budget
 
 ```text
-DELETE /performance-budgets/:budgetId
+DELETE /api/v1/performance-budgets/:budgetId
 ```
 
 MVP note:
@@ -645,7 +645,7 @@ MVP note:
 ### Get Run Budget Evaluations
 
 ```text
-GET /benchmark-runs/:runId/budget-evaluations
+GET /api/v1/benchmark-runs/:runId/budget-evaluations
 ```
 
 ## Regression Routes
@@ -653,7 +653,7 @@ GET /benchmark-runs/:runId/budget-evaluations
 ### List Project Regressions
 
 ```text
-GET /projects/:projectId/regressions
+GET /api/v1/projects/:projectId/regressions
 ```
 
 Filters:
@@ -669,13 +669,13 @@ limit
 ### Get Regression
 
 ```text
-GET /regressions/:regressionId
+GET /api/v1/regressions/:regressionId
 ```
 
 ### Acknowledge Regression
 
 ```text
-POST /regressions/:regressionId/acknowledge
+POST /api/v1/regressions/:regressionId/acknowledge
 ```
 
 Request:
@@ -689,7 +689,7 @@ Request:
 ### Resolve Regression
 
 ```text
-POST /regressions/:regressionId/resolve
+POST /api/v1/regressions/:regressionId/resolve
 ```
 
 Request:
@@ -703,7 +703,7 @@ Request:
 ### Accept Regression
 
 ```text
-POST /regressions/:regressionId/accept
+POST /api/v1/regressions/:regressionId/accept
 ```
 
 Request:
@@ -721,7 +721,7 @@ Accepting a regression does not automatically promote a baseline unless explicit
 ### Approve Exception
 
 ```text
-POST /benchmark-runs/:runId/exceptions
+POST /api/v1/benchmark-runs/:runId/exceptions
 ```
 
 Request:
@@ -744,7 +744,7 @@ Rules:
 ### Create API Key
 
 ```text
-POST /projects/:projectId/api-keys
+POST /api/v1/projects/:projectId/api-keys
 ```
 
 Request:
@@ -778,13 +778,13 @@ Important:
 ### List API Keys
 
 ```text
-GET /projects/:projectId/api-keys
+GET /api/v1/projects/:projectId/api-keys
 ```
 
 ### Revoke API Key
 
 ```text
-DELETE /api-keys/:apiKeyId
+DELETE /api/v1/api-keys/:apiKeyId
 ```
 
 ## Activity Log Routes
@@ -792,7 +792,7 @@ DELETE /api-keys/:apiKeyId
 ### List Activity Logs
 
 ```text
-GET /organizations/:organizationId/activity-logs
+GET /api/v1/organizations/:organizationId/activity-logs
 ```
 
 Filters:
@@ -810,7 +810,7 @@ limit
 ### Health Check
 
 ```text
-GET /health
+GET /api/v1/health
 ```
 
 Response:
@@ -829,7 +829,7 @@ Response:
 ### Readiness Check
 
 ```text
-GET /ready
+GET /api/v1/health/ready
 ```
 
 Should verify database connectivity.
@@ -864,14 +864,14 @@ Example:
 For CI/CD, the simplest integration should be:
 
 1. Deploy service to staging or preview.
-2. Call `POST /ci/benchmark-runs`.
-3. Poll `GET /benchmark-runs/:runId`.
+2. Call `POST /api/v1/ci/benchmark-runs`.
+3. Poll `GET /api/v1/benchmark-runs/:runId`.
 4. Fail the pipeline if `decisionStatus` becomes `FAILED`.
 
 Later we can support blocking wait behavior:
 
 ```text
-POST /ci/benchmark-runs?wait=true&timeoutSeconds=600
+POST /api/v1/ci/benchmark-runs?wait=true&timeoutSeconds=600
 ```
 
 Do not implement blocking behavior until the async run path is stable.
@@ -903,4 +903,3 @@ Breaking changes should create a new API version later:
 ```
 
 Internal frontend changes do not require API version bumps. Public CI/CD contract changes do.
-
