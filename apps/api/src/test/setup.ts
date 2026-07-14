@@ -3,6 +3,7 @@ process.env.API_PORT = "4000";
 process.env.API_CORS_ORIGIN = "http://localhost:5173";
 process.env.DATABASE_URL =
   "postgresql://regressor99:regressor99@localhost:5432/regressor99_test?schema=public";
+process.env.DIRECT_URL =
+  "postgresql://regressor99:regressor99@localhost:5432/regressor99_test?schema=public";
 process.env.JWT_ACCESS_SECRET = "test-access-secret-with-enough-length";
 process.env.JWT_REFRESH_SECRET = "test-refresh-secret-with-enough-length";
-
