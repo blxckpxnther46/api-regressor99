@@ -14,6 +14,7 @@ import { organizationsRouter } from "./modules/organizations/organizations.route
 import { deploymentsRouter } from "./modules/deployments/deployments.routes.js";
 import { performanceBudgetsRouter } from "./modules/performance-budgets/performance-budgets.routes.js";
 import { projectsRouter } from "./modules/projects/projects.routes.js";
+import { runRegressionsRouter } from "./modules/regressions/regressions.routes.js";
 
 export const apiRouter = Router();
 
@@ -26,5 +27,6 @@ apiRouter.use("/benchmark-suites", suiteBaselinesRouter);
 apiRouter.use("/benchmark-suites", suiteBenchmarkRunsRouter);
 apiRouter.use("/benchmark-suites", benchmarkSuitesRouter);
 apiRouter.use("/benchmark-runs", runBaselinePromotionRouter);
+apiRouter.use("/benchmark-runs", runRegressionsRouter);
 apiRouter.use("/benchmark-runs", benchmarkRunsRouter);
 apiRouter.use("/performance-budgets", performanceBudgetsRouter);
