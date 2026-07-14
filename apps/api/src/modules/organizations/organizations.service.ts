@@ -146,7 +146,7 @@ export async function removeMember(
   });
 }
 
-async function requireMembership(userId: string, organizationId: string) {
+export async function requireMembership(userId: string, organizationId: string) {
   const membership = await prisma.organizationMember.findUnique({
     where: {
       organizationId_userId: {
