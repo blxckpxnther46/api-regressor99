@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import {
+  runBaselinePromotionRouter,
+  suiteBaselinesRouter
+} from "./modules/baselines/baselines.routes.js";
+import {
   benchmarkRunsRouter,
   suiteBenchmarkRunsRouter
 } from "./modules/benchmark-runs/benchmark-runs.routes.js";
@@ -18,7 +22,9 @@ apiRouter.use("/auth", authRouter);
 apiRouter.use("/organizations", organizationsRouter);
 apiRouter.use("/projects", projectsRouter);
 apiRouter.use("/deployments", deploymentsRouter);
+apiRouter.use("/benchmark-suites", suiteBaselinesRouter);
 apiRouter.use("/benchmark-suites", suiteBenchmarkRunsRouter);
 apiRouter.use("/benchmark-suites", benchmarkSuitesRouter);
+apiRouter.use("/benchmark-runs", runBaselinePromotionRouter);
 apiRouter.use("/benchmark-runs", benchmarkRunsRouter);
 apiRouter.use("/performance-budgets", performanceBudgetsRouter);
