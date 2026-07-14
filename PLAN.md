@@ -523,7 +523,7 @@ Important rules:
 Tests:
 
 - Creating suite creates version 1.
-- Updating suite creates version 2.
+- Updating suite creates version 1.1 and so on.
 - Old version remains unchanged.
 
 ## Phase 7: Performance Budget Engine
