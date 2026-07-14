@@ -19,6 +19,7 @@ import {
 import { projectBenchmarkSuitesRouter } from "../benchmark-suites/benchmark-suites.routes.js";
 import { projectDeploymentsRouter } from "../deployments/deployments.routes.js";
 import { projectPerformanceBudgetsRouter } from "../performance-budgets/performance-budgets.routes.js";
+import { projectRegressionsRouter } from "../regressions/regressions.routes.js";
 import { targetVerificationRouter } from "../target-verification/target-verification.routes.js";
 
 export const projectsRouter = Router();
@@ -59,6 +60,7 @@ projectsRouter.use("/:projectId/target-verification", targetVerificationRouter);
 projectsRouter.use("/:projectId/deployments", projectDeploymentsRouter);
 projectsRouter.use("/:projectId/benchmark-suites", projectBenchmarkSuitesRouter);
 projectsRouter.use("/:projectId/performance-budgets", projectPerformanceBudgetsRouter);
+projectsRouter.use("/:projectId/regressions", projectRegressionsRouter);
 
 projectsRouter.get(
   "/:projectId",
