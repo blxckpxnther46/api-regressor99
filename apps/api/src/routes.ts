@@ -12,6 +12,7 @@ import { benchmarkSuitesRouter } from "./modules/benchmark-suites/benchmark-suit
 import { healthRouter } from "./modules/health/health.routes.js";
 import { organizationsRouter } from "./modules/organizations/organizations.routes.js";
 import { deploymentsRouter } from "./modules/deployments/deployments.routes.js";
+import { decisionEngineRouter } from "./modules/decision-engine/decision-engine.routes.js";
 import { performanceBudgetsRouter } from "./modules/performance-budgets/performance-budgets.routes.js";
 import { projectsRouter } from "./modules/projects/projects.routes.js";
 import { runRegressionsRouter } from "./modules/regressions/regressions.routes.js";
@@ -28,5 +29,6 @@ apiRouter.use("/benchmark-suites", suiteBenchmarkRunsRouter);
 apiRouter.use("/benchmark-suites", benchmarkSuitesRouter);
 apiRouter.use("/benchmark-runs", runBaselinePromotionRouter);
 apiRouter.use("/benchmark-runs", runRegressionsRouter);
+apiRouter.use("/benchmark-runs", decisionEngineRouter);
 apiRouter.use("/benchmark-runs", benchmarkRunsRouter);
 apiRouter.use("/performance-budgets", performanceBudgetsRouter);
