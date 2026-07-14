@@ -16,6 +16,7 @@ import {
   projectIdParamsSchema,
   updateProjectSchema
 } from "./projects.schemas.js";
+import { projectDeploymentsRouter } from "../deployments/deployments.routes.js";
 import { targetVerificationRouter } from "./target-verification.routes.js";
 
 export const projectsRouter = Router();
@@ -53,6 +54,7 @@ projectsRouter.post(
 );
 
 projectsRouter.use("/:projectId/target-verification", targetVerificationRouter);
+projectsRouter.use("/:projectId/deployments", projectDeploymentsRouter);
 
 projectsRouter.get(
   "/:projectId",
