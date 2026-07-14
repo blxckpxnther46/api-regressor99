@@ -169,7 +169,7 @@ async function getAccessibleProject(userId: string, projectId: string) {
   return project;
 }
 
-async function assertSafeTarget(targetBaseUrl: string) {
+export async function assertSafeTarget(targetBaseUrl: string) {
   const url = new URL(targetBaseUrl);
 
   if (!["http:", "https:"].includes(url.protocol)) {
