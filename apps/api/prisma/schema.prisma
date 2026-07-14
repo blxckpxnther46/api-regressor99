@@ -90,6 +90,20 @@ enum RegressionStatus {
   ACCEPTED
 }
 
+enum TargetVerificationMethod {
+  WELL_KNOWN
+  DNS_TXT
+  HEADER
+  JSON_BODY
+}
+
+enum TargetVerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  REVOKED
+}
+
 model User {
   id                    String               @id @default(cuid())
   email                 String               @unique
@@ -162,6 +176,7 @@ model Project {
   slug               String
   description        String?
   defaultBaseUrl     String?             @map("default_base_url")
+  archivedAt         DateTime?           @map("archived_at")
   organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   deployments        Deployment[]
   benchmarkSuites    BenchmarkSuite[]
@@ -171,12 +186,32 @@ model Project {
   regressions        Regression[]
   decisionExceptions DecisionException[]
   apiKeys            ApiKey[]
+  targetVerifications TargetVerification[]
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
 
   @@unique([organizationId, slug])
   @@index([organizationId, createdAt])
   @@map("projects")
+}
+
+model TargetVerification {
+  id             String                   @id @default(cuid())
+  organizationId String                   @map("organization_id")
+  projectId      String                   @map("project_id")
+  targetBaseUrl  String                   @map("target_base_url")
+  method         TargetVerificationMethod
+  tokenHash      String                   @map("token_hash")
+  status         TargetVerificationStatus @default(PENDING)
+  verificationUrl String?                 @map("verification_url")
+  verifiedAt     DateTime?                @map("verified_at")
+  project        Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+
+  @@index([projectId, status])
+  @@index([organizationId, createdAt])
+  @@map("target_verifications")
 }
 
 model Deployment {
