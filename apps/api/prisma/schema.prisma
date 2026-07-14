@@ -261,7 +261,7 @@ model BenchmarkSuiteVersion {
   id              String              @id @default(cuid())
   organizationId  String              @map("organization_id")
   suiteId         String              @map("suite_id")
-  versionNumber   Int                 @map("version_number")
+  versionNumber   Float               @map("version_number")
   loadProfile     Json                @map("load_profile")
   configHash      String              @map("config_hash")
   createdByUserId String?             @map("created_by_user_id")
