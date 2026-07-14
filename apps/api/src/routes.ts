@@ -4,6 +4,7 @@ import { benchmarkSuitesRouter } from "./modules/benchmark-suites/benchmark-suit
 import { healthRouter } from "./modules/health/health.routes.js";
 import { organizationsRouter } from "./modules/organizations/organizations.routes.js";
 import { deploymentsRouter } from "./modules/deployments/deployments.routes.js";
+import { performanceBudgetsRouter } from "./modules/performance-budgets/performance-budgets.routes.js";
 import { projectsRouter } from "./modules/projects/projects.routes.js";
 
 export const apiRouter = Router();
@@ -14,3 +15,4 @@ apiRouter.use("/organizations", organizationsRouter);
 apiRouter.use("/projects", projectsRouter);
 apiRouter.use("/deployments", deploymentsRouter);
 apiRouter.use("/benchmark-suites", benchmarkSuitesRouter);
+apiRouter.use("/performance-budgets", performanceBudgetsRouter);
