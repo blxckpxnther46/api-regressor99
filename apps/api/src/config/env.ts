@@ -12,7 +12,24 @@ const envSchema = z.object({
   REDIS_URL: z.string().url().optional(),
   REDIS_KEY_PREFIX: z.string().min(1).default("regressor99"),
   JWT_ACCESS_SECRET: z.string().min(24),
-  JWT_REFRESH_SECRET: z.string().min(24)
+  JWT_REFRESH_SECRET: z.string().min(24),
+  NVIDIA_API_KEY: z.string().min(1).optional(),
+  NVIDIA_BASE_URL: z
+    .string()
+    .url()
+    .default("https://integrate.api.nvidia.com/v1/chat/completions"),
+  NVIDIA_AI_MODELS: z
+    .string()
+    .default(
+      [
+        "nvidia/nemotron-3-super-120b-a12b",
+        "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        "qwen/qwen3-coder-480b-a35b-instruct",
+        "deepseek-ai/deepseek-v4-pro",
+        "moonshotai/kimi-k2-instruct",
+        "openai/gpt-oss-120b"
+      ].join(",")
+    )
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
