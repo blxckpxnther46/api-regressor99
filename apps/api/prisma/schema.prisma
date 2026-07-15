@@ -331,6 +331,7 @@ model BenchmarkRun {
   budgetEvaluations   BudgetEvaluation[]
   regressions         Regression[]
   decisionExceptions  DecisionException[]
+  aiInsights          AiInsight[]
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
 
@@ -341,6 +342,26 @@ model BenchmarkRun {
   @@index([projectId, decisionStatus, createdAt])
   @@index([deploymentId])
   @@map("benchmark_runs")
+}
+
+model AiInsight {
+  id             String       @id @default(cuid())
+  organizationId String       @map("organization_id")
+  projectId      String       @map("project_id")
+  runId          String       @map("run_id")
+  promptVersion  String       @map("prompt_version")
+  provider       String
+  model          String
+  inputFacts     Json         @map("input_facts")
+  output         Json
+  rawText        String       @map("raw_text")
+  failureCount   Int          @default(0) @map("failure_count")
+  run            BenchmarkRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([runId, createdAt])
+  @@index([projectId, createdAt])
+  @@map("ai_insights")
 }
 
 model BenchmarkRunMetric {

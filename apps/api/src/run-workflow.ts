@@ -11,6 +11,7 @@ import { detectRegressionsForRun } from "./modules/regressions/regressions.servi
 import { listActivityLogs } from "./modules/activity-logs/activity-logs.service.js";
 import { createApiKey, revokeApiKey } from "./modules/api-keys/api-keys.service.js";
 import { createCiCdBenchmarkRun } from "./modules/ci-cd/ci-cd.service.js";
+import { generateRunAiAnalysis } from "./modules/ai-analysis/ai-analysis.service.js";
 
 async function assertThrows(promise: Promise<any>, expectedCode: string) {
   try {
@@ -149,6 +150,27 @@ async function main() {
     for (const reg of regressions) {
       console.log(` - Regression type: ${reg.type}, baseline: ${reg.baselineValue}ms, current: ${reg.currentValue}ms (+${reg.changePercent.toFixed(1)}%)`);
     }
+
+    console.log(`\n--- Step 10b: AI Analysis Generation & Caching ---`);
+    const aiAnalysis1 = await generateRunAiAnalysis(userId, run2.id);
+    console.log(`AI Insight 1 Generated (ID: ${aiAnalysis1.id}, Model: ${aiAnalysis1.model}, Provider: ${aiAnalysis1.provider})`);
+    
+    const aiAnalysis2 = await generateRunAiAnalysis(userId, run2.id);
+    console.log(`AI Insight 2 Generated (ID: ${aiAnalysis2.id}, Model: ${aiAnalysis2.model}, Provider: ${aiAnalysis2.provider})`);
+
+    if (aiAnalysis1.id === aiAnalysis2.id) {
+      console.log(` ✓ Successfully cached: Insight IDs match!`);
+    } else {
+      throw new Error(`Caching failed: Insight IDs did not match! (${aiAnalysis1.id} !== ${aiAnalysis2.id})`);
+    }
+
+    const output = aiAnalysis1.output as any;
+    console.log(`Summary: ${output.summary}`);
+    console.log(`What Happened:\n${output.whatHappened.map((item: string) => `  - ${item}`).join("\n")}`);
+    console.log(`Likely Causes:\n${output.likelyCauses.map((item: string) => `  - ${item}`).join("\n")}`);
+    console.log(`Recommended Fixes:\n${output.recommendedFixes.map((item: string) => `  - ${item}`).join("\n")}`);
+    console.log(`Risk Level: ${output.riskLevel}`);
+    console.log(`Next Steps:\n${output.nextSteps.map((item: string) => `  - ${item}`).join("\n")}`);
 
     console.log(`\n--- Step 11: CI/CD & API Keys Engine Tests ---`);
     

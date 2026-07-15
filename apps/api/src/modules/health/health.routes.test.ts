@@ -1,6 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../app.js";
+import { signAccessToken } from "../auth/auth.crypto.js";
 
 describe("health routes", () => {
   it("returns API health status with the standard response shape", async () => {
@@ -22,10 +23,24 @@ describe("health routes", () => {
     });
   });
 
-  it("returns a stable not-found error for unknown routes", async () => {
+  it("rejects unknown API routes without authentication", async () => {
     const app = createApp();
 
-    const response = await request(app).get("/api/v1/unknown").expect(404);
+    const response = await request(app).get("/api/v1/unknown").expect(401);
+
+    expect(response.body.error).toMatchObject({
+      code: "AUTH_REQUIRED"
+    });
+  });
+
+  it("returns a stable not-found error for authenticated unknown routes", async () => {
+    const app = createApp();
+    const token = signAccessToken({ userId: "user_123", email: "user@test.local" });
+
+    const response = await request(app)
+      .get("/api/v1/unknown")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(404);
 
     expect(response.body.error).toMatchObject({
       code: "ROUTE_NOT_FOUND"

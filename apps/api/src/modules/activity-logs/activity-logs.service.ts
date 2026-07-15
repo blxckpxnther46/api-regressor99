@@ -16,6 +16,7 @@ export const ActivityAction = {
   ApiKeyCreated: "api_key.created",
   ApiKeyRevoked: "api_key.revoked",
   CiRunTriggered: "ci.benchmark_run.triggered",
+  AiInsightGenerated: "ai_insight.generated",
   TargetVerificationCreated: "target_verification.created",
   TargetVerificationCompleted: "target_verification.completed",
   TargetVerificationRevoked: "target_verification.revoked"
@@ -82,4 +83,3 @@ export function logActivity(input: LogActivityInput) {
 export function isKnownActivityAction(action: string) {
   return Object.values(ActivityAction).includes(action as ActivityAction);
 }
-
