@@ -8,6 +8,7 @@ import {
 import { prisma } from "../../db/prisma.js";
 import { runInTransaction } from "../../db/transaction.js";
 import { AppError } from "../../shared/errors/app-error.js";
+import { ActivityAction } from "../activity-logs/activity-logs.service.js";
 import { requireMembership } from "../organizations/organizations.service.js";
 import { getProject } from "../projects/projects.service.js";
 
@@ -146,6 +147,17 @@ export async function detectRegressionsForRun(userId: string, runId: string) {
           severity: candidate.severity
         }))
       });
+
+      await tx.activityLog.create({
+        data: {
+          organizationId: run.organizationId,
+          actorUserId: userId,
+          action: ActivityAction.RegressionDetected,
+          entityType: "benchmark_run",
+          entityId: run.id,
+          metadata: { count: candidates.length }
+        }
+      });
     }
 
     return tx.regression.findMany({
@@ -246,4 +258,3 @@ function decreasePercent(baselineValue: number, currentValue: number) {
 
   return ((baselineValue - currentValue) / baselineValue) * 100;
 }
-

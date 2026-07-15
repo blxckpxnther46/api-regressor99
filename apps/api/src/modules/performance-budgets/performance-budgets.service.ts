@@ -1,6 +1,7 @@
 import { BudgetOperator, BudgetResult, Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { AppError } from "../../shared/errors/app-error.js";
+import { ActivityAction, logActivity } from "../activity-logs/activity-logs.service.js";
 import { requireMembership } from "../organizations/organizations.service.js";
 import { getProject } from "../projects/projects.service.js";
 
@@ -49,7 +50,7 @@ export async function createPerformanceBudget(
   const project = await getWritableProject(userId, projectId);
   await assertBudgetScope(project.id, input.suiteId, input.endpointId);
 
-  return prisma.performanceBudget.create({
+  const budget = await prisma.performanceBudget.create({
     data: {
       organizationId: project.organizationId,
       projectId: project.id,
@@ -65,6 +66,17 @@ export async function createPerformanceBudget(
     },
     select: performanceBudgetSelect
   });
+
+  await logActivity({
+    organizationId: budget.organizationId,
+    actorUserId: userId,
+    action: ActivityAction.BudgetChanged,
+    entityType: "performance_budget",
+    entityId: budget.id,
+    metadata: { operation: "created", metric: budget.metric }
+  });
+
+  return budget;
 }
 
 export async function listPerformanceBudgets(
@@ -106,21 +118,43 @@ export async function updatePerformanceBudget(
 ) {
   await getWritableBudget(userId, budgetId);
 
-  return prisma.performanceBudget.update({
+  const budget = await prisma.performanceBudget.update({
     where: { id: budgetId },
     data: input,
     select: performanceBudgetSelect
   });
+
+  await logActivity({
+    organizationId: budget.organizationId,
+    actorUserId: userId,
+    action: ActivityAction.BudgetChanged,
+    entityType: "performance_budget",
+    entityId: budget.id,
+    metadata: { operation: "updated" }
+  });
+
+  return budget;
 }
 
 export async function disablePerformanceBudget(userId: string, budgetId: string) {
   await getWritableBudget(userId, budgetId);
 
-  return prisma.performanceBudget.update({
+  const budget = await prisma.performanceBudget.update({
     where: { id: budgetId },
     data: { isEnabled: false },
     select: performanceBudgetSelect
   });
+
+  await logActivity({
+    organizationId: budget.organizationId,
+    actorUserId: userId,
+    action: ActivityAction.BudgetChanged,
+    entityType: "performance_budget",
+    entityId: budget.id,
+    metadata: { operation: "disabled" }
+  });
+
+  return budget;
 }
 
 export function evaluateBudget(input: {

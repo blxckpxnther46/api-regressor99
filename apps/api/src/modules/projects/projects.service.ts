@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { AppError } from "../../shared/errors/app-error.js";
+import { ActivityAction, logActivity } from "../activity-logs/activity-logs.service.js";
 import { requireMembership } from "../organizations/organizations.service.js";
 
 const projectSelect = {
@@ -48,10 +49,21 @@ export async function createProject(
   }
 
   try {
-    return await prisma.project.create({
+    const project = await prisma.project.create({
       data: input,
       select: projectSelect
     });
+
+    await logActivity({
+      organizationId: project.organizationId,
+      actorUserId: userId,
+      action: ActivityAction.ProjectCreated,
+      entityType: "project",
+      entityId: project.id,
+      metadata: { slug: project.slug }
+    });
+
+    return project;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

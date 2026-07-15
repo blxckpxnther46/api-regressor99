@@ -3,6 +3,7 @@ import { HttpMethod, Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { runInTransaction } from "../../db/transaction.js";
 import { AppError } from "../../shared/errors/app-error.js";
+import { ActivityAction } from "../activity-logs/activity-logs.service.js";
 import { requireMembership } from "../organizations/organizations.service.js";
 import { getProject } from "../projects/projects.service.js";
 
@@ -105,6 +106,17 @@ export async function createBenchmarkSuite(
       endpoints: input.endpoints
     });
 
+    await tx.activityLog.create({
+      data: {
+        organizationId: project.organizationId,
+        actorUserId: userId,
+        action: ActivityAction.SuiteCreated,
+        entityType: "benchmark_suite",
+        entityId: suite.id,
+        metadata: { versionNumber: 1.1 }
+      }
+    });
+
     return tx.benchmarkSuite.findUniqueOrThrow({
       where: { id: suite.id },
       select: suiteSelect
@@ -151,13 +163,26 @@ export async function createBenchmarkSuiteVersion(
       orderBy: { versionNumber: "desc" }
     });
 
+    const versionNumber = nextSuiteVersionNumber(latest?.versionNumber);
+
     await createVersion(tx, {
       organizationId: suite.organizationId,
       suiteId,
-      versionNumber: nextSuiteVersionNumber(latest?.versionNumber),
+      versionNumber,
       createdByUserId: userId,
       loadProfile: input.loadProfile,
       endpoints: input.endpoints
+    });
+
+    await tx.activityLog.create({
+      data: {
+        organizationId: suite.organizationId,
+        actorUserId: userId,
+        action: ActivityAction.SuiteVersionCreated,
+        entityType: "benchmark_suite",
+        entityId: suiteId,
+        metadata: { versionNumber }
+      }
     });
 
     return tx.benchmarkSuite.findUniqueOrThrow({

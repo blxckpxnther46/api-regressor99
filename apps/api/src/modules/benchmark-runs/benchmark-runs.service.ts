@@ -2,6 +2,7 @@ import { ExecutionStatus, Prisma, TriggerSource } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { runInTransaction } from "../../db/transaction.js";
 import { AppError } from "../../shared/errors/app-error.js";
+import { ActivityAction, logActivity } from "../activity-logs/activity-logs.service.js";
 import { requireMembership } from "../organizations/organizations.service.js";
 import { assertSafeTarget } from "../target-verification/target-verification.service.js";
 import { executeInternalHttpRun } from "../runner/internal-http-adapter.js";
@@ -65,7 +66,7 @@ export async function createBenchmarkRun(
     await assertDeploymentScope(suite.projectId, input.deploymentId);
   }
 
-  return prisma.benchmarkRun.create({
+  const run = await prisma.benchmarkRun.create({
     data: {
       organizationId: suite.organizationId,
       projectId: suite.projectId,
@@ -80,6 +81,17 @@ export async function createBenchmarkRun(
     },
     select: benchmarkRunSelect
   });
+
+  await logActivity({
+    organizationId: run.organizationId,
+    actorUserId: userId,
+    action: ActivityAction.RunTriggered,
+    entityType: "benchmark_run",
+    entityId: run.id,
+    metadata: { suiteId: run.suiteId, environment: run.environment }
+  });
+
+  return run;
 }
 
 export async function getBenchmarkRun(userId: string, runId: string) {
@@ -141,7 +153,7 @@ export async function executeBenchmarkRun(userId: string, runId: string) {
         }))
       });
 
-      return tx.benchmarkRun.update({
+      const completedRun = await tx.benchmarkRun.update({
         where: { id: run.id },
         data: {
           executionStatus: ExecutionStatus.COMPLETED,
@@ -149,14 +161,39 @@ export async function executeBenchmarkRun(userId: string, runId: string) {
         },
         select: benchmarkRunSelect
       });
+
+      await tx.activityLog.create({
+        data: {
+          organizationId: run.organizationId,
+          actorUserId: userId,
+          action: ActivityAction.RunCompleted,
+          entityType: "benchmark_run",
+          entityId: run.id,
+          metadata: { metricCount: metrics.length }
+        }
+      });
+
+      return completedRun;
     });
   } catch (error) {
+    const failureReason = error instanceof Error ? error.message : "Benchmark run failed.";
     await prisma.benchmarkRun.update({
       where: { id: run.id },
       data: {
         executionStatus: ExecutionStatus.FAILED,
         finishedAt: new Date(),
-        failureReason: error instanceof Error ? error.message : "Benchmark run failed."
+        failureReason
+      }
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        organizationId: run.organizationId,
+        actorUserId: userId,
+        action: ActivityAction.RunCompleted,
+        entityType: "benchmark_run",
+        entityId: run.id,
+        metadata: { status: "failed", error: failureReason }
       }
     });
 
@@ -273,4 +310,3 @@ async function assertDeploymentScope(projectId: string, deploymentId: string) {
     throw new AppError(400, "DEPLOYMENT_SCOPE_INVALID", "Deployment does not belong to this project.");
   }
 }
-
