@@ -18,12 +18,14 @@ import {
   updateMemberSchema
 } from "./organizations.schemas.js";
 import { activityLogsRouter } from "../activity-logs/activity-logs.routes.js";
+import { organizationApiKeysRouter } from "../api-keys/api-keys.routes.js";
 
 export const organizationsRouter = Router();
 
 organizationsRouter.use(requireAuth);
 
 organizationsRouter.use("/:organizationId/activity-logs", activityLogsRouter);
+organizationsRouter.use("/:organizationId/api-keys", organizationApiKeysRouter);
 
 function organizationId(request: Parameters<Parameters<typeof asyncHandler>[0]>[0]) {
   return request.params.organizationId as string;

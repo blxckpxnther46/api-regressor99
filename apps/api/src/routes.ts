@@ -9,11 +9,13 @@ import {
   suiteBenchmarkRunsRouter
 } from "./modules/benchmark-runs/benchmark-runs.routes.js";
 import { benchmarkSuitesRouter } from "./modules/benchmark-suites/benchmark-suites.routes.js";
+import { ciCdRouter } from "./modules/ci-cd/ci-cd.routes.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 import { organizationsRouter } from "./modules/organizations/organizations.routes.js";
 import { deploymentsRouter } from "./modules/deployments/deployments.routes.js";
 import { decisionExceptionsRouter } from "./modules/decision-exceptions/decision-exceptions.routes.js";
 import { decisionEngineRouter } from "./modules/decision-engine/decision-engine.routes.js";
+import { apiKeysRouter } from "./modules/api-keys/api-keys.routes.js";
 import { performanceBudgetsRouter } from "./modules/performance-budgets/performance-budgets.routes.js";
 import { projectsRouter } from "./modules/projects/projects.routes.js";
 import { runRegressionsRouter } from "./modules/regressions/regressions.routes.js";
@@ -23,6 +25,8 @@ export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/organizations", organizationsRouter);
+apiRouter.use("/api-keys", apiKeysRouter);
+apiRouter.use("/ci", ciCdRouter);
 apiRouter.use("/projects", projectsRouter);
 apiRouter.use("/deployments", deploymentsRouter);
 apiRouter.use("/benchmark-suites", suiteBaselinesRouter);
