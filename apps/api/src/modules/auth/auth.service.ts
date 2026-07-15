@@ -9,6 +9,7 @@ import {
   signAccessToken,
   verifyPassword
 } from "./auth.crypto.js";
+import { ActivityAction } from "../activity-logs/activity-logs.service.js";
 
 function slugify(value: string) {
   const slug = value
@@ -62,6 +63,17 @@ export async function register(input: {
       });
 
       const refreshToken = await createRefreshTokenRecord(tx, user.id);
+
+      await tx.activityLog.create({
+        data: {
+          organizationId: organization.id,
+          actorUserId: user.id,
+          action: ActivityAction.UserRegistered,
+          entityType: "user",
+          entityId: user.id,
+          metadata: { organizationId: organization.id }
+        }
+      });
 
       return {
         ...authResponse(user, refreshToken),

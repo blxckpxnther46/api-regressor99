@@ -17,10 +17,13 @@ import {
   organizationParamsSchema,
   updateMemberSchema
 } from "./organizations.schemas.js";
+import { activityLogsRouter } from "../activity-logs/activity-logs.routes.js";
 
 export const organizationsRouter = Router();
 
 organizationsRouter.use(requireAuth);
+
+organizationsRouter.use("/:organizationId/activity-logs", activityLogsRouter);
 
 function organizationId(request: Parameters<Parameters<typeof asyncHandler>[0]>[0]) {
   return request.params.organizationId as string;

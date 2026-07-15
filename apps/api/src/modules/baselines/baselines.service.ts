@@ -2,6 +2,7 @@ import { ExecutionStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { runInTransaction } from "../../db/transaction.js";
 import { AppError } from "../../shared/errors/app-error.js";
+import { ActivityAction } from "../activity-logs/activity-logs.service.js";
 import { requireMembership } from "../organizations/organizations.service.js";
 
 const baselineMetricSelect = {
@@ -155,6 +156,21 @@ export async function promoteRunToBaseline(
       }))
     });
 
+    await tx.activityLog.create({
+      data: {
+        organizationId: run.organizationId,
+        actorUserId: userId,
+        action: ActivityAction.BaselinePromoted,
+        entityType: "baseline",
+        entityId: baseline.id,
+        metadata: {
+          runId: run.id,
+          suiteId: run.suiteId,
+          environment: run.environment
+        }
+      }
+    });
+
     return tx.baseline.findUniqueOrThrow({
       where: { id: baseline.id },
       select: baselineSelect
@@ -191,4 +207,3 @@ async function requireBaselinePromoter(userId: string, organizationId: string) {
     );
   }
 }
-

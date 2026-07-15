@@ -6,6 +6,7 @@ import { env } from "../../config/env.js";
 import { prisma } from "../../db/prisma.js";
 import { AppError } from "../../shared/errors/app-error.js";
 import { requireMembership } from "../organizations/organizations.service.js";
+import { ActivityAction, logActivity } from "../activity-logs/activity-logs.service.js";
 
 const selectVerification = {
   id: true,
@@ -91,6 +92,15 @@ export async function createTargetVerification(
     select: selectVerification
   });
 
+  await logActivity({
+    organizationId: verification.organizationId,
+    actorUserId: userId,
+    action: ActivityAction.TargetVerificationCreated,
+    entityType: "target_verification",
+    entityId: verification.id,
+    metadata: { targetBaseUrl: verification.targetBaseUrl, method: verification.method }
+  });
+
   return { ...verification, token };
 }
 
@@ -123,7 +133,7 @@ export async function verifyTarget(userId: string, projectId: string) {
       ? "VERIFIED"
       : "FAILED";
 
-  return prisma.targetVerification.update({
+  const updatedVerification = await prisma.targetVerification.update({
     where: { id: verification.id },
     data: {
       status,
@@ -131,15 +141,42 @@ export async function verifyTarget(userId: string, projectId: string) {
     },
     select: selectVerification
   });
+
+  await logActivity({
+    organizationId: updatedVerification.organizationId,
+    actorUserId: userId,
+    action: ActivityAction.TargetVerificationCompleted,
+    entityType: "target_verification",
+    entityId: updatedVerification.id,
+    metadata: { targetBaseUrl: updatedVerification.targetBaseUrl, status: updatedVerification.status }
+  });
+
+  return updatedVerification;
 }
 
 export async function revokeTargetVerification(userId: string, projectId: string) {
-  await requireProjectManager(userId, projectId);
+  const project = await requireProjectManager(userId, projectId);
+
+  const verifications = await prisma.targetVerification.findMany({
+    where: { projectId, status: "VERIFIED" },
+    select: { id: true, organizationId: true, targetBaseUrl: true }
+  });
 
   await prisma.targetVerification.updateMany({
     where: { projectId, status: "VERIFIED" },
     data: { status: "REVOKED" }
   });
+
+  for (const verification of verifications) {
+    await logActivity({
+      organizationId: verification.organizationId,
+      actorUserId: userId,
+      action: ActivityAction.TargetVerificationRevoked,
+      entityType: "target_verification",
+      entityId: verification.id,
+      metadata: { targetBaseUrl: verification.targetBaseUrl }
+    });
+  }
 
   return { success: true };
 }
