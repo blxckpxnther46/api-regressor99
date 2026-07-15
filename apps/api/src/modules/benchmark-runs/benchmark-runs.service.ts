@@ -280,7 +280,7 @@ async function requireRunnerRole(userId: string, organizationId: string) {
   }
 }
 
-async function assertVerifiedTarget(projectId: string, targetBaseUrl: string) {
+export async function assertVerifiedTarget(projectId: string, targetBaseUrl: string) {
   await assertSafeTarget(targetBaseUrl);
   const verifications = await prisma.targetVerification.findMany({
     where: { projectId, status: "VERIFIED" },

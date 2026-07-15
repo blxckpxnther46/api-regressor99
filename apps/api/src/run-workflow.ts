@@ -9,6 +9,21 @@ import { createBenchmarkRun, executeBenchmarkRun } from "./modules/benchmark-run
 import { promoteRunToBaseline } from "./modules/baselines/baselines.service.js";
 import { detectRegressionsForRun } from "./modules/regressions/regressions.service.js";
 import { listActivityLogs } from "./modules/activity-logs/activity-logs.service.js";
+import { createApiKey, revokeApiKey } from "./modules/api-keys/api-keys.service.js";
+import { createCiCdBenchmarkRun } from "./modules/ci-cd/ci-cd.service.js";
+
+async function assertThrows(promise: Promise<any>, expectedCode: string) {
+  try {
+    await promise;
+    throw new Error(`Expected error code ${expectedCode} but no error was thrown.`);
+  } catch (error: any) {
+    if (error.code === expectedCode) {
+      console.log(` ✓ Successfully rejected: ${expectedCode}`);
+    } else {
+      throw new Error(`Expected error code ${expectedCode} but got ${error.code} (${error.message})`);
+    }
+  }
+}
 
 async function main() {
   const mockPort = 9999;
@@ -135,7 +150,105 @@ async function main() {
       console.log(` - Regression type: ${reg.type}, baseline: ${reg.baselineValue}ms, current: ${reg.currentValue}ms (+${reg.changePercent.toFixed(1)}%)`);
     }
 
-    console.log(`\n--- Step 11: List Generated Activity Logs ---`);
+    console.log(`\n--- Step 11: CI/CD & API Keys Engine Tests ---`);
+    
+    console.log(`Creating valid scoped API key...`);
+    const validApiKey = await createApiKey(userId, organizationId, {
+      name: "CI/CD Scoped Key",
+      projectId,
+      scopes: ["benchmark_runs:create", "deployments:create"]
+    });
+    console.log(`Created API Key (ID: ${validApiKey.id}, Prefix: ${validApiKey.keyPrefix})`);
+
+    console.log(`Triggering CI/CD Run using valid API key...`);
+    const ciRun = await createCiCdBenchmarkRun(validApiKey.key, {
+      projectId,
+      suiteId,
+      environment: "production",
+      deployment: {
+        commitSha: "sha123_workflow",
+        branch: "ci-branch"
+      }
+    });
+    console.log(`Successfully triggered CI benchmark run: ${ciRun.id} (Deployment ID: ${ciRun.deploymentId})`);
+
+    console.log(`Testing missing scope restriction...`);
+    const readOnlyKey = await createApiKey(userId, organizationId, {
+      name: "Read-Only Key",
+      projectId,
+      scopes: ["projects:read"]
+    });
+    await assertThrows(
+      createCiCdBenchmarkRun(readOnlyKey.key, {
+        projectId,
+        suiteId,
+        environment: "production"
+      }),
+      "API_KEY_SCOPE_REQUIRED"
+    );
+
+    console.log(`Testing project access boundary...`);
+    const otherProject = await createProject(userId, {
+      organizationId,
+      name: "Other Project",
+      slug: `other-proj-${Date.now()}`,
+      defaultBaseUrl: `http://127.0.0.1:${mockPort}`
+    });
+    const keyForOtherProject = await createApiKey(userId, organizationId, {
+      name: "Other Project Key",
+      projectId: otherProject.id,
+      scopes: ["benchmark_runs:create"]
+    });
+    await assertThrows(
+      createCiCdBenchmarkRun(keyForOtherProject.key, {
+        projectId,
+        suiteId,
+        environment: "production"
+      }),
+      "API_KEY_PROJECT_FORBIDDEN"
+    );
+
+    console.log(`Testing revoked key rejection...`);
+    await revokeApiKey(userId, validApiKey.id);
+    console.log(`Revoked the valid API Key.`);
+    await assertThrows(
+      createCiCdBenchmarkRun(validApiKey.key, {
+        projectId,
+        suiteId,
+        environment: "production"
+      }),
+      "API_KEY_INVALID"
+    );
+
+    console.log(`Testing unverified target restriction...`);
+    const unverifiedSuite = await createBenchmarkSuite(userId, otherProject.id, {
+      name: "Unverified Suite",
+      targetBaseUrl: `http://127.0.0.1:${mockPort}`,
+      loadProfile: { requestCount: 1 },
+      endpoints: [
+        {
+          name: "Verify Endpoint",
+          method: "GET",
+          path: "/v1/orders",
+          expectedStatus: 200,
+          timeoutMs: 3000
+        }
+      ]
+    });
+    const globalKey = await createApiKey(userId, organizationId, {
+      name: "Global CI Key",
+      scopes: ["benchmark_runs:create"]
+    });
+    await assertThrows(
+      createCiCdBenchmarkRun(globalKey.key, {
+        projectId: otherProject.id,
+        suiteId: unverifiedSuite.id,
+        environment: "production"
+      }),
+      "TARGET_NOT_VERIFIED"
+    );
+
+    console.log(`\n--- Step 12: List All Generated Activity Logs ---`);
     const logs = await listActivityLogs(userId, organizationId, {});
     console.log(`Total activity logs generated for org: ${logs.length}`);
     for (const log of logs) {
