@@ -42,5 +42,25 @@ describe("decision engine rules", () => {
       })
     ).toBe(DecisionStatus.WARNED);
   });
+
+  it("warns instead of failing on hard budget failure when exception is active", () => {
+    expect(
+      applyDecisionRules({
+        budgetEvaluations: [{ result: BudgetResult.FAIL, isHard: true }],
+        hasOpenRegression: false,
+        hasActiveException: true
+      })
+    ).toBe(DecisionStatus.WARNED);
+  });
+
+  it("warns instead of requiring review on regression when exception is active", () => {
+    expect(
+      applyDecisionRules({
+        budgetEvaluations: [{ result: BudgetResult.PASS, isHard: true }],
+        hasOpenRegression: true,
+        hasActiveException: true
+      })
+    ).toBe(DecisionStatus.WARNED);
+  });
 });
 
